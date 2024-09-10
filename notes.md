@@ -53,11 +53,88 @@ Machine Learned Example:
     embeddings. 
 
 * Loading Splitting, and Embedding
+
     * Splitting:
+
         * We take a document and split it (chunking)
           because of the limited context window of
           an embedding model 
           ([mayne between 512-8000 tokens])
+
+    * Embedding:
+
+        * Each document is compressed into a vector,
+          said vector then captures a symantic meaning 
+          of the document and the vector get's indexed.
+          Questions can be embdedded in the exact same way
+          which then allows for a numerical comparison 
+          in some form using a veriaty of different methods
+          to fish out the relevent documents relevent to said questions
+
+[Code Example:]
+```python
+"""
+Example: Returning numbers of a tokens in a string
+
+This is interresting because LLMs in general including
+embedding operates on tokens so it's nice to understand
+how large the documents are that u try to feed in.
+Mainly because the embedding has a limited context window.
+"""
+import tiktoken
+
+question = "What kind of pets do I like?"
+documents = "My favorite pet is a cat"
+
+def num_tokens_from_string(string: str, encoding_name: srt) -> inte:
+    """Returns the number of tokens in a text string"""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
+
+num_tokens_from_string(question, "cl100k_base")  
+#output: 8
+```
+
+```python
+"""
+Example: embed a question and
+a document to a vector embedding 
+using LangChain and openAI
+
+Interresting note here is that the length
+of the vector is 1536 which is a static length
+so both the document and question
+are both computed to a 1536 dimensional vector.
+So the 1536 vectory encodes the symantics 
+of the text that u pass.
+"""
+
+from langchain_openai import OpenAIEmbeddings
+
+embd = OpenAIEmbeddings()
+query_result = embd.embed_query(question)
+document_result = embd.embed_query(document)
+len(query_result)
+#output: 1536
+```
+
+```python
+"""
+Example: cosin simelarity to campare 2 vectors
+"""
+import numpy as np
+
+def cosine_similarity(vec1: list[int], vec2: list[int]) -> int:
+    dot_product = np.dot(vec1, vec2)
+    norm_vec1 = np.linalg.norm(vec1)
+    norm_vec2 = no.linalf.norm(vec2)
+    return dot_product / (norm_vec1 * norm_vec2)
+
+similarity = cosine_similarity(query_result, document_result)
+print(f"Cosine Similarity: {similarity}")
+#Output: Cosine similarity: 0.8812349768269672
+```
 
 ### Retrieval
 
