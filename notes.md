@@ -136,6 +136,73 @@ print(f"Cosine Similarity: {similarity}")
 #Output: Cosine similarity: 0.8812349768269672
 ```
 
+```python
+#### INDEXING ####
+"""
+Example: Loading documents,
+         Splitting document,
+         embedd document
+
+What is happening:
+Takeing each split, we're embedding it
+using openAI embeddings into a vector representation,
+And then store it with a link to the raw doccument
+itself in our vector store
+"""
+import bs4
+from langchain_community.document_loaders import WebBaseLoader
+
+loader = WebBaseLoader(
+    web_path=("https://lilianweng.github.cio/posts/2023-06-23-agent/",),
+    bs_kwargs=dict(
+        parse_only=bs4.SoupStrainer(
+            class_=("post-content", "post-title", "post-header")
+        )
+    ),
+)
+blog_docs = loader.load()
+
+
+#### SPLIT ####
+from langchain.text_spitter import RecursiveCharacterTextSplitter
+
+text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+    chink_size=300,
+    chunk_overlap=50
+)
+
+#### Make Splits ####
+splits = text_splitter.split_documents(blog_docs)
+
+#### Index ####
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+
+vectorestore = Chroma.from_documents(documents=splits,
+                                     embedding=OpenAIEmbeddings()
+
+retriever = vectorstore.as_retriever()
+```
+
 ### Retrieval
+[note] 
+> The act of indexing also makes 
+> the document easy to retriewe
+
+[How to think about it]
+> Imagein a 3d space -  we embedd the doccument somwere in 3d space.
+> When then make a search query and embedd the search query in 3d space.
+> Afterwards we make a similarity surch with the embedded query
+> And this allowes os to retriewe the closest 1 - 1000000+ documents
+> that matches the search query.
+
+[Why does this work]
+> By embedding a chunk of a file we represent the symantic meanig of
+> that chunk by giving it a position in an x dimensional space by which is the vector.
+> When we then embedd the query the query in questions also get's it symantic meanig
+> reprecented as a postion in the same x dimensional space. This gives us the
+> possibility to compare the simelarity in the querys position in space
+> with all the chunkes we've embedded position in space and then retrieve the closest 
+> x neibours of the querys position in space. 
 
 ### Generation
