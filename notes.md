@@ -33,7 +33,7 @@
 
 [Statical and Machine Learned Representations:]
 
-statistical Example: 
+statical Example: 
 
     Spars vectors = Looking at the frequency of words
     and create a Spars Vector in such the vecotor location
@@ -76,7 +76,7 @@ Machine Learned Example:
 """
 Example: Returning numbers of a tokens in a string
 
-This is interresting because LLMs in general including
+This is interesting because LLMs in general including
 embedding operates on tokens so it's nice to understand
 how large the documents are that u try to feed in.
 Mainly because the embedding has a limited context window.
@@ -102,11 +102,11 @@ Example: embed a question and
 a document to a vector embedding 
 using LangChain and openAI
 
-Interresting note here is that the length
+Interesting note here is that the length
 of the vector is 1536 which is a static length
 so both the document and question
 are both computed to a 1536 dimensional vector.
-So the 1536 vectory encodes the symantics 
+So the 1536 vector encodes the symantics 
 of the text that u pass.
 """
 
@@ -187,14 +187,20 @@ retriever = vectorstore.as_retriever()
 ### Retrieval
 [note] 
 > The act of indexing also makes 
-> the document easy to retriewe
+> the document easy to retrieve
 
 [How to think about it]
 > Imagein a 3d space -  we embedd the doccument somwere in 3d space.
-> When then make a search query and embedd the search query in 3d space.
+> We then make a search query and embedd the search query in 3d space.
 > Afterwards we make a similarity surch with the embedded query
 > And this allowes os to retriewe the closest 1 - 1000000+ documents
-> that matches the search query.
+> that matches the search query. 
+> A point in space is also an representation of the semantic meaning
+> This means that points in the same space that are close to eachother 
+> naturally have a similar semantic meaning which means it likely uf not
+> garanteed to be related to each other in some way
+> This Idea and thechnolegy is the cornerstone for a lot of search and retrieval
+> methods u see using modern vector stores.
 
 [Why does this work]
 > By embedding a chunk of a file we represent the symantic meanig of
@@ -206,3 +212,142 @@ retriever = vectorstore.as_retriever()
 > x neibours of the querys position in space. 
 
 ### Generation
+[Basic workflow]
+First, this introduces the notion of a prompt with placeholder keys where we later can
+inject information like context, documents or user input. 
+A prompt can also be used to alter the the query that's used to retrieve the dcuments
+that's stored in our vectorstore. 
+
+[example prompt]
+```python
+system_prompt = (
+    "You are an assistant for question-answering tasks. "
+    "Use the following pieces of retrieved context to answer "
+    "the question. If you don't know the answer, say that you "
+    "don't know. Use three sentences maximum and keep the "
+    "answer concise."
+    "\n\n"
+    "{context}"
+)
+```
+> A sysmtem prompt which injects the context of the retrieved documents. 
+
+
+```python
+contextualize_q_system_prompt = (
+    "Given a chat history and the latest user question "
+    "which might reference context in the chat history, "
+    "formulate a standalone question which can be understood "
+    "without the chat history. Do NOT answer the question, "
+    "just reformulate it if needed and otherwise return it as is."
+)
+```
+> A system prompt designed to alter the query used to fetch from the vectorstore
+> Worth noting: If it's the first message the prompt is designed to do nothing -
+> this prompt is also only meant as a middle man, it will only alter the query and not
+> the actual message that will be sent to the llm
+> Read more about this under [Query-Translation]
+
+## Query Translation
+
+[What is Query Translations?]
+Query Translations is the first stage of an advanced RAG-pipeline
+and the goal of query translation is to take an input user question and
+then translate it in some way in order to improve retrieval
+
+[Why Query Translation?]
+A users query can be ambiguous and poorly written. This cause problems
+since the goal is to do some kind of similarity search between the query
+and the vectorstore and if the query is badly written the similarity search
+might give the wrong documents. 
+
+[Aproches to solve this]
+* High abstraction
+    * Step-back question
+        * Step-back promoting
+
+* Mid abstraction
+    * Query rewriting
+        * Multi-query
+        * RAG-Fusion
+
+* Less abstraction
+    * Sub-Question
+        * Least-to-most
+
+### Multi-Query
+[Main Idea]
+The main idea is that we take the user question and break it down to
+diferently worded questions from different perspektives. The intuition here
+is that it is possible that the way that a question is initially worded once 
+embedded is not well aligned or in close proximity in this High dimensional embedding
+space to a document we want to retrieve. So by rewriting the question in different
+ways can we. We can then combine it with retrieval by comparing the retrieved documents
+or combine them in some way that fits the question and then use generation to perform RAG. 
+
+[Example Prompt for Multi-Query]
+```python
+template = """
+You are an AI language model assistan. Your task is to generate five
+diferent versions of the given user question to retrieve relevant documents from a
+vector databse. By generating multiple perspectives on the user question, your goal 
+is to help the user overcome some of the limitatons of the distance-based similarity search.
+Provide these alternative questions separated by newlines. Original question: {question}
+"""
+```
+
+[Example: How it's done]
+> Ask question -> Send it to an llm -> llm generates n different version of question
+> -> We do a similarity search on all n versions of questions -> We the smuch the list together -
+> and remove duplicates of retrieved documents -> We then send the original question with the -
+> retrieved documents to the main llm. 
+
+[Example Code Using LangChain]
+```python
+from langchain.load import dumps, loads
+from operator import itemgetter
+from langchain_openai import ChatOpenAI
+from langchain_core.runnables import RunnablePassthrough
+
+def get_unique_union(documents: list[list]):
+    """ Unique union of retrieved docs """
+    # Flatten list of lists, and convert each Document to string
+    flattend_docs = [dumps(doc) for sublist in documents for doc in sublist]
+    # Get unique documents
+    unique_docs = list(set(flattend_docs))
+    # Return
+    return [loads(doc) for doc in unique_docs]
+
+# Retrieve
+question = "what is task decomposition for LLM agents?"
+retrieval_chain = generate_queries | retrieve.map() | get_unique_union
+
+# RAG 
+template = """
+Answer the following question based onthis context:
+
+{context}
+
+Question: {question}
+"""
+
+prompt = ChatPromptTemplate.from_template(template)
+
+llm = ChatOpenAI(temperatur=0)
+
+final_rag_chain = (
+    {"context": retrieval_chain,
+     "question": itemgetter("question")}
+    | prompt
+    | llm
+    | StrOutputParser()
+)
+
+final_rag_chain.invoke({"quesion":question})
+```
+
+### RAG-fusion
+
+
+
+
