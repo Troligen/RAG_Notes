@@ -271,9 +271,10 @@ might give the wrong documents.
         * Multi-query
         * RAG-Fusion
 
-* Less abstraction
+* Low abstraction
     * Sub-Question
         * Least-to-most
+        * IR-CoT
 
 ### Multi-Query
 [Main Idea]
@@ -282,7 +283,7 @@ diferently worded questions from different perspektives. The intuition here
 is that it is possible that the way that a question is initially worded once 
 embedded is not well aligned or in close proximity in this High dimensional embedding
 space to a document we want to retrieve. So by rewriting the question in different
-ways can we. We can then combine it with retrieval by comparing the retrieved documents
+ways can we then combine it with retrieval by comparing the retrieved documents
 or combine them in some way that fits the question and then use generation to perform RAG. 
 
 [Example Prompt for Multi-Query]
@@ -347,7 +348,130 @@ final_rag_chain.invoke({"quesion":question})
 ```
 
 ### RAG-fusion
+[Main Idea]
+It follows the sama main idea as Multy RAG where we take the
+user query and make a model reformulate it into different versions
+but we then apply a ranking step over our documents. 
 
+
+[RAG Fusion Prompt Example]
+```python
+from langchain.prompt import ChatPromptTemplate
+
+# RAG-Fusion: Relate
+template = """
+You are a hekpful assistant that generates multiple search queries based of a single input query. \n
+Generate multiple search queries related to: {question} \n
+output: {4 queries}:
+"""
+prompt_rag_fusion = ChatPomptTemplate.from_tamplate(tamplate)
+```
+
+[Example Code using LangChain]
+```python
+from langchain_core.output_parser import StrOutputParser
+from langchain_openai import ChatOpenAI
+from langhcain.load import dumps, loads
+
+generate_queries = (
+    prompt_rag_fusion
+    | ChatOpenAI(temperature=0)
+    | StrOutputParser()
+    | (lambda x: x.split("\n"))
+)
+
+def reciprocal_rank_fusion(results: list[list], k=60):
+    """
+    Reciprocal_rank_fusion that takes multiple lists of ranked documents
+    and an optional parameter k used in the RRF formula
+    """
+
+    # Initialize a dictionary to hold fused scores for each unique document
+    fused_scores = {}
+
+    # Iterate through each list of ranked documents
+    for docs in results:
+        # Iterate through each document in the list, with its rank (position in the list)
+        for rank, doc in enumerate(docs):
+            # Convert the document to a string format to use as a key (assumes documents can be serialized to JSON)
+            doc_str = dumps(doc)
+            # If the document is not in the fused_scores dictionary, add it with an inital score of 0
+            if doc_str not in fused_scores:
+                fused_scores[doc_str] = 0
+            # Retrieve the current score of the document, if any 
+            previous_score = fused_scores[doc_str]
+            # Update the score of the document using the RRF formula: 1 / (rank + k)
+            fused_scores[doc_str] += 1 / (rank + k)
+
+    # Sort the documents based of their ranked score in decending order to get the final reranked result
+    reranked_results = [
+        (loads(doc), score)
+        for doc, score in sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)
+    ]
+    return reranked_results
+
+retrieval_chain_rag_fusion = generate_queries | retriever.map() | reciprocal_rankfusion
+docs = retrieval_chain_rag_fusion.invoke({"question": question})
+```
+
+[Final RAG chain]
+```python
+from langchain_core.runnables import RunnablePassthrough
+from operator import itemgetter
+
+# RAG
+template = """Answer the following question based on this context:
+
+{context}
+
+Question: {question}
+"""
+
+prompt =ChatPromptTemplate.from_template(template)
+
+finaö_rag_chain = (
+    {"context": retrieval_chain_rag_fusion,
+     "question": itemgetter("question")}
+    | prompt
+    | llm
+    | StrOutputParser()
+)
+
+final_rag_chain.invoke({"question": question})
+```
+### Least-to-most
+The object is to first take a question and then decompose it to 
+a set of subproblems
+
+[Example]
+Problem to solve: 
+Last letter concatenation - The goal is to take a question
+"think, machine, learning" and then get to the answer "keg"
+using an least-to-most aproch
+
+Decompose the problem:
+Q: "think, machine, learning"
+A: "think" "think, machine" "think, machine, learning"
+
+This is a least-to-most prompt context (decomposition) for the
+last-leter-concatenation task. What it does is that an llm takes the question
+which is "think, machine, learning" and decompose it to 3 different 
+sub problems that it will use to solve the main problem
+
+Figuring out the answer:
+The LLM will now take the different subproblems and solv them indevidually 
+and use the answer of the previous problem to easier solve the problem after.
+(ignoring the first one since it's only 1 word)
+
+Q1: "think, machine"
+A1: The last letter of "think" is "k", the last letter of "machine" is "e", 
+    this gives us ke. So the output is "ke"
+
+Q2: "think, machine, learning"
+A2: "think, machine" outputs "ke", The last letter of "learing" is "g",
+    concatenating "ke" and "g" leads to "keg". So the output is "keg"
+
+### IR-CoT
 
 
 
