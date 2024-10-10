@@ -449,9 +449,9 @@ Last letter concatenation - The goal is to take a question
 "think, machine, learning" and then get to the answer "keg"
 using an least-to-most aproch
 
-Decompose the problem:
-Q: "think, machine, learning"
-A: "think" "think, machine" "think, machine, learning"
+>Decompose the problem:
+>Q: "think, machine, learning"
+>A: "think" "think, machine" "think, machine, learning"
 
 This is a least-to-most prompt context (decomposition) for the
 last-leter-concatenation task. What it does is that an llm takes the question
@@ -463,15 +463,96 @@ The LLM will now take the different subproblems and solv them indevidually
 and use the answer of the previous problem to easier solve the problem after.
 (ignoring the first one since it's only 1 word)
 
-Q1: "think, machine"
-A1: The last letter of "think" is "k", the last letter of "machine" is "e", 
-    this gives us ke. So the output is "ke"
+>Q1: "think, machine"
+>A1: The last letter of "think" is "k", the last letter of "machine" is "e", 
+>    this gives us ke. So the output is "ke"
+>
+>Q2: "think, machine, learning"
+>A2: "think, machine" outputs "ke", The last letter of "learing" is "g",
+>    concatenating "ke" and "g" leads to "keg". So the output is "keg"
 
-Q2: "think, machine, learning"
-A2: "think, machine" outputs "ke", The last letter of "learing" is "g",
-    concatenating "ke" and "g" leads to "keg". So the output is "keg"
+### IR-CoT (Interleave Retrieval with Chain of Thougt)
+IR-CoT interleaves chain-of-thought generation and knowledge retrieval steps
+in order to guide the retrieval with CoT and vice-versa. This interleaving 
+allows retrievig more relevent information for later reasoning steps, compared 
+to standard retrieval using solely the question as the query
 
-### IR-CoT
+[Example Prompt]
+```python
+from langchain.prompts import ChatPromptTemplate
 
+# Decomposition
+template = """
+You are a helpful assistent that generates multiple sub-questions related to an input question. \n
+The goal is to break down the input into a set of sub-problems / sub-questions that can be answers in isolation. \n
+Generate multiple search queries related to {question} \n
+ouput (3 questions)
+"""
+prompt_decomposition = ChatPromptTemplate.from_template(template)
+```
 
+[Example usage with LangChain]
+```python
+from langchain_openai import ChatOpenAI
+from langchain_core.output_parsers import StrOutputParser
 
+# llm
+llm = ChatOpenAI(temperature=0)
+
+# chain
+generate_queries_decomposition = (
+    prompt_decomposition   
+    | llm
+    | StrOutputParser()
+    | (lambda x: x.split("\n"))
+)
+
+# run
+question = "What is the main component of an LLM-powered autonomus agent system?"
+questions = generate_queries_decomposition.invoke({"question": question})
+
+print(question) 
+# output of print():
+# ['1. What is LLM technology and how does it work in autonomous agent systems?',
+#  '2. What are the specific components that make up an LLM-powered autonomous agent system?',
+#  '3. How do the main components of an LLM-powered autonomous agent system interact with each other to enable autonomous functionality?']
+```
+
+[Example: Prompt for using query decomposition]
+```python
+template = """
+Here is the question you need to answer:
+
+\n --- \n {question} \n --- \n
+
+Here is the availeble background questions and answer pairs:
+
+\n --- \n {q_a_pairs} \n --- \n
+
+Here is additional context related to the questin:
+
+\n --- \n {context} \n --- \n
+
+Use the above context and any background question + answer pairs to answer the questions: \n {question}
+"""
+
+decomposition_template = ChatPromptTemplate.from_template(template)
+```
+
+[Example: Usingg the decom_prompt]
+```python
+from operator import itemgetter
+from langchain_core.parsers import StrOutputParser
+
+def format_qa_paris(question, answer):
+    """Format Q and A pairs"""
+
+    formatted_string = ""
+    formatted_string += f"Question: {question}\nAnswer: {answer}"
+    
+    return formatted_string.strip()
+```
+
+[links to papers]
+[arxiv](https://arxiv.org/pdf/2205.10625.pdf)
+[ICLE-2023](https://arxiv.org/pdf/2205.10625)
