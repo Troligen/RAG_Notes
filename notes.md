@@ -779,15 +779,15 @@ of the routing strategies
       about what data source to use depending on the question
 
   - Semantic Routing
-
-    - We pre-embedd prompts we know will retrieve the correct answer
-      and when we later get a user question will do a similarity
-      search against the prompts and then retrieve based of the prompts
-      and not the question itself.
+    - The idea here is that this allow us to change systempromp
+      based of what the question is that has been asked. So we
+      don't just query documents but we also query a system prompt
+      to be used for the LLM. In other words we route what prompt to
+      use based of the semantic meaning of the question/query
 
 ### Logical Routing
 
-[Example:]
+[Example: Setting Up Routing]
 
 ```python
 from typing import Literal
@@ -796,9 +796,14 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_openai import ChatOpenAI
 
-# Data model
 class RouteQuery(BaseModel):
-    """Route a user query to the most relevant datasource."""
+    """
+    We Create a structured object in this case holding
+    ["python_docs", "js_docs", "golang_docs"]
+    This allows to convert it to a OpenAI schema
+    and then bind it to our LLM as function calls
+    For example the output could be {"datasource": "js_docs"}
+    """
 
     datasource: Literal["python_docs", "js_docs", "golang_docs"] = Field(
         ...,
@@ -806,6 +811,7 @@ class RouteQuery(BaseModel):
     )
 
 # LLM with function call
+# And then binding of RoutQuery
 llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0)
 structured_llm = llm.with_structured_output(RouteQuery)
 
@@ -824,3 +830,103 @@ prompt = ChatPromptTemplate.from_messages(
 # Define router
 router = prompt | structured_llm
 ```
+
+[Example: Using the Router]
+
+```python
+question = """Why doesn't the following code work:
+
+from langchain_core.prompts import ChatPromptTemplate
+
+prompt = ChatPromptTemplate.from_messages(["human", "speak in {language}"])
+prompt.invoke("french")
+"""
+
+result = router.invoke({"question": question})
+print(result) # RouteQuery(DataSource="python_doc")
+
+def choose_route(result):
+    if "python_docs" in result.datasource.lower():
+        ### Logic here
+        return "chain for python_docs"
+    elif "js_docs" in result.datasource.lower():
+        ### Logic here
+        return "chain for js_docs"
+    else:
+        ### Logic here
+        return "golang_docs"
+
+from langchain_core.runnables import RunnableLambda
+
+full_chain = router | RunnableLambda(choose_route)
+
+full_chain.invoke({"question": question})
+```
+
+[Notes:]
+As an example could u use this in an Agent made in LangGraph and use it
+to decide what NODE/VEC the agent should go to next for fetching of data.
+
+### Semantic Routing
+
+[Example: Code]
+
+```python
+from langchain.utils.math import cosine_similarity
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+# Two prompts
+physics_template = """You are a very smart physics professor. \
+You are great at answering questions about physics in a concise and easy to understand manner. \
+When you don't know the answer to a question you admit that you don't know.
+
+Here is a question:
+{query}"""
+
+math_template = """You are a very good mathematician. You are great at answering math questions. \
+You are so good because you are able to break down hard problems into their component parts, \
+answer the component parts, and then put them together to answer the broader question.
+
+Here is a question:
+{query}"""
+
+# Embed prompts
+embeddings = OpenAIEmbeddings()
+prompt_templates = [physics_template, math_template]
+prompt_embeddings = embeddings.embed_documents(prompt_templates)
+
+# Route question to prompt
+def prompt_router(input):
+    # Embed question
+    query_embedding = embeddings.embed_query(input["query"])
+    # Compute similarity
+    similarity = cosine_similarity([query_embedding], prompt_embeddings)[0]
+    most_similar = prompt_templates[similarity.argmax()]
+    # Chosen prompt
+    print("Using MATH" if most_similar == math_template else "Using PHYSICS")
+    return PromptTemplate.from_template(most_similar)
+
+
+chain = (
+    {"query": RunnablePassthrough()}
+    | RunnableLambda(prompt_router)
+    | ChatOpenAI()
+    | StrOutputParser()
+)
+
+print(chain.invoke("What's a black hole"))
+```
+
+## Query Construction
+
+The idea of taking natural language and the converting it to a domain specific language
+In this case are we talking about going for natural language to meta data for filters in
+vectorstores.
+
+How it works is that we take the natural language query, construct it to metadata that
+matches the structure in some capacity to the meta data that's embedded together with
+the documents in the vectordb, and then append it to the original query we'll hopefully
+gett better documents queried from the vectordb.
