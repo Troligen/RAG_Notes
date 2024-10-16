@@ -1,77 +1,77 @@
 # RAG
 
 ## Main Components
+
 ### Indexing
+
 [Document Loading:]
 
-   * Text Representation:
-       * Retrieve documents that relates 
-         to the input question
-       
- 
+- Text Representation:
+  - Retrieve documents that relates
+    to the input question
+
 >       questioen -> Retriever -> [Document]
 >                       |
 >                 Load Documents
 >                       |
 >                   Documents
 
-   * Numerical Representation:
-       * Numerical Representation of Document
-         because it's easier to compare vectors
-         with numbers then free form text
-       * Text documents being compressed to
-         sequens of numbers for easier searches.
+- Numerical Representation:
+  - Numerical Representation of Document
+    because it's easier to compare vectors
+    with numbers then free form text
+  - Text documents being compressed to
+    sequens of numbers for easier searches.
 
->   (x,y,z..) -> Cosine similarity, etc -> [(x,y,z..)]
->                       |
->                 Load Documents
->                       |
->                   (x,y,z..)
->                   [(x,y,z..)]
-
-
+> (x,y,z..) -> Cosine similarity, etc -> [(x,y,z..)]
+> |
+> Load Documents
+> |
+> (x,y,z..)
+> [(x,y,z..)]
 
 [Statical and Machine Learned Representations:]
 
-statical Example: 
+statical Example:
 
     Spars vectors = Looking at the frequency of words
     and create a Spars Vector in such the vecotor location
     are a large vocabulay of possible words where each value
-    represent the number of the occurences of that 
+    represent the number of the occurences of that
     particualar word and it's spars because
     there's many 0s
 
->    There's very good search methods over these types
->    of numerical representations. 
+> There's very good search methods over these types
+> of numerical representations.
 
-Machine Learned Example: 
+Machine Learned Example:
 
     Embedding methods = You take and build a compressed fixed
     length reprecentation of a document. Have been developed
-    with correspondingly very strong search methods over 
-    embeddings. 
+    with correspondingly very strong search methods over
+    embeddings.
 
-* Loading Splitting, and Embedding
+- Loading Splitting, and Embedding
 
-    * Splitting:
+  - Splitting:
 
-        * We take a document and split it (chunking)
-          because of the limited context window of
-          an embedding model 
-          ([mayne between 512-8000 tokens])
+    - We take a document and split it (chunking)
+      because of the limited context window of
+      an embedding model
+      ([mayne between 512-8000 tokens])
 
-    * Embedding:
+  - Embedding:
 
-        * Each document is compressed into a vector,
-          said vector then captures a symantic meaning 
-          of the document and the vector get's indexed.
-          Questions can be embdedded in the exact same way
-          which then allows for a numerical comparison 
-          in some form using a veriaty of different methods
-          to fish out the relevent documents relevent to said questions
+    - Each document is compressed into a vector,
+      said vector then captures a symantic meaning
+      of the document and the vector get's indexed.
+      Questions can be embdedded in the exact same way
+      which then allows for a numerical comparison
+      in some form using a veriaty of different methods
+      to fish out the relevent documents relevent to said questions
 
 [Code Example:]
+
 ```python
 """
 Example: Returning numbers of a tokens in a string
@@ -92,21 +92,21 @@ def num_tokens_from_string(string: str, encoding_name: srt) -> inte:
     num_tokens = len(encoding.encode(string))
     return num_tokens
 
-num_tokens_from_string(question, "cl100k_base")  
+num_tokens_from_string(question, "cl100k_base")
 #output: 8
 ```
 
 ```python
 """
 Example: embed a question and
-a document to a vector embedding 
+a document to a vector embedding
 using LangChain and openAI
 
 Interesting note here is that the length
 of the vector is 1536 which is a static length
 so both the document and question
 are both computed to a 1536 dimensional vector.
-So the 1536 vector encodes the symantics 
+So the 1536 vector encodes the symantics
 of the text that u pass.
 """
 
@@ -185,40 +185,46 @@ retriever = vectorstore.as_retriever()
 ```
 
 ### Retrieval
-[note] 
-> The act of indexing also makes 
+
+[note]
+
+> The act of indexing also makes
 > the document easy to retrieve
 
 [How to think about it]
-> Imagein a 3d space -  we embedd the doccument somwere in 3d space.
+
+> Imagein a 3d space - we embedd the doccument somwere in 3d space.
 > We then make a search query and embedd the search query in 3d space.
 > Afterwards we make a similarity surch with the embedded query
 > And this allowes os to retriewe the closest 1 - 1000000+ documents
-> that matches the search query. 
+> that matches the search query.
 > A point in space is also an representation of the semantic meaning
-> This means that points in the same space that are close to eachother 
+> This means that points in the same space that are close to eachother
 > naturally have a similar semantic meaning which means it likely uf not
 > garanteed to be related to each other in some way
 > This Idea and thechnolegy is the cornerstone for a lot of search and retrieval
 > methods u see using modern vector stores.
 
 [Why does this work]
+
 > By embedding a chunk of a file we represent the symantic meanig of
 > that chunk by giving it a position in an x dimensional space by which is the vector.
 > When we then embedd the query the query in questions also get's it symantic meanig
 > reprecented as a postion in the same x dimensional space. This gives us the
 > possibility to compare the simelarity in the querys position in space
-> with all the chunkes we've embedded position in space and then retrieve the closest 
-> x neibours of the querys position in space. 
+> with all the chunkes we've embedded position in space and then retrieve the closest
+> x neibours of the querys position in space.
 
 ### Generation
+
 [Basic workflow]
 First, this introduces the notion of a prompt with placeholder keys where we later can
-inject information like context, documents or user input. 
+inject information like context, documents or user input.
 A prompt can also be used to alter the the query that's used to retrieve the dcuments
-that's stored in our vectorstore. 
+that's stored in our vectorstore.
 
 [example prompt]
+
 ```python
 system_prompt = (
     "You are an assistant for question-answering tasks. "
@@ -230,8 +236,8 @@ system_prompt = (
     "{context}"
 )
 ```
-> A sysmtem prompt which injects the context of the retrieved documents. 
 
+> A sysmtem prompt which injects the context of the retrieved documents.
 
 ```python
 contextualize_q_system_prompt = (
@@ -242,6 +248,7 @@ contextualize_q_system_prompt = (
     "just reformulate it if needed and otherwise return it as is."
 )
 ```
+
 > A system prompt designed to alter the query used to fetch from the vectorstore
 > Worth noting: If it's the first message the prompt is designed to do nothing -
 > this prompt is also only meant as a middle man, it will only alter the query and not
@@ -259,51 +266,59 @@ then translate it in some way in order to improve retrieval
 A users query can be ambiguous and poorly written. This cause problems
 since the goal is to do some kind of similarity search between the query
 and the vectorstore and if the query is badly written the similarity search
-might give the wrong documents. 
+might give the wrong documents.
 
 [Aproches to solve this]
-* High abstraction
-    * Step-back question
-        * Step-back promoting
 
-* Mid abstraction
-    * Query rewriting
-        * Multi-query
-        * RAG-Fusion
+- High abstraction
 
-* Low abstraction
-    * Sub-Question
-        * Least-to-most
-        * IR-CoT
+  - Step-back question
+    - Step-back promoting
+    - HyDe
+
+- Mid abstraction
+
+  - Query rewriting
+    - Multi-query
+    - RAG-Fusion
+
+- Low abstraction
+  - Sub-Question
+    - Least-to-most
+    - IR-CoT
 
 ### Multi-Query
+
 [Main Idea]
 The main idea is that we take the user question and break it down to
 diferently worded questions from different perspektives. The intuition here
-is that it is possible that the way that a question is initially worded once 
+is that it is possible that the way that a question is initially worded once
 embedded is not well aligned or in close proximity in this High dimensional embedding
 space to a document we want to retrieve. So by rewriting the question in different
 ways can we then combine it with retrieval by comparing the retrieved documents
-or combine them in some way that fits the question and then use generation to perform RAG. 
+or combine them in some way that fits the question and then use generation to perform RAG.
 
 [Example Prompt for Multi-Query]
+
 ```python
 template = """
 You are an AI language model assistan. Your task is to generate five
 diferent versions of the given user question to retrieve relevant documents from a
-vector databse. By generating multiple perspectives on the user question, your goal 
+vector databse. By generating multiple perspectives on the user question, your goal
 is to help the user overcome some of the limitatons of the distance-based similarity search.
 Provide these alternative questions separated by newlines. Original question: {question}
 """
 ```
 
 [Example: How it's done]
+
 > Ask question -> Send it to an llm -> llm generates n different version of question
 > -> We do a similarity search on all n versions of questions -> We the smuch the list together -
 > and remove duplicates of retrieved documents -> We then send the original question with the -
-> retrieved documents to the main llm. 
+> retrieved documents to the main llm.
 
 [Example Code Using LangChain]
+
 ```python
 from langchain.load import dumps, loads
 from operator import itemgetter
@@ -323,7 +338,7 @@ def get_unique_union(documents: list[list]):
 question = "what is task decomposition for LLM agents?"
 retrieval_chain = generate_queries | retrieve.map() | get_unique_union
 
-# RAG 
+# RAG
 template = """
 Answer the following question based onthis context:
 
@@ -348,13 +363,14 @@ final_rag_chain.invoke({"quesion":question})
 ```
 
 ### RAG-fusion
+
 [Main Idea]
 It follows the sama main idea as Multy RAG where we take the
 user query and make a model reformulate it into different versions
-but we then apply a ranking step over our documents. 
-
+but we then apply a ranking step over our documents.
 
 [RAG Fusion Prompt Example]
+
 ```python
 from langchain.prompt import ChatPromptTemplate
 
@@ -368,6 +384,7 @@ prompt_rag_fusion = ChatPomptTemplate.from_tamplate(tamplate)
 ```
 
 [Example Code using LangChain]
+
 ```python
 from langchain_core.output_parser import StrOutputParser
 from langchain_openai import ChatOpenAI
@@ -398,7 +415,7 @@ def reciprocal_rank_fusion(results: list[list], k=60):
             # If the document is not in the fused_scores dictionary, add it with an inital score of 0
             if doc_str not in fused_scores:
                 fused_scores[doc_str] = 0
-            # Retrieve the current score of the document, if any 
+            # Retrieve the current score of the document, if any
             previous_score = fused_scores[doc_str]
             # Update the score of the document using the RRF formula: 1 / (rank + k)
             fused_scores[doc_str] += 1 / (rank + k)
@@ -415,6 +432,7 @@ docs = retrieval_chain_rag_fusion.invoke({"question": question})
 ```
 
 [Final RAG chain]
+
 ```python
 from langchain_core.runnables import RunnablePassthrough
 from operator import itemgetter
@@ -439,45 +457,49 @@ finaö_rag_chain = (
 
 final_rag_chain.invoke({"question": question})
 ```
+
 ### Least-to-most
-The object is to first take a question and then decompose it to 
+
+The object is to first take a question and then decompose it to
 a set of subproblems
 
 [Example]
-Problem to solve: 
+Problem to solve:
 Last letter concatenation - The goal is to take a question
 "think, machine, learning" and then get to the answer "keg"
 using an least-to-most aproch
 
->Decompose the problem:
->Q: "think, machine, learning"
->A: "think" "think, machine" "think, machine, learning"
+> Decompose the problem:
+> Q: "think, machine, learning"
+> A: "think" "think, machine" "think, machine, learning"
 
 This is a least-to-most prompt context (decomposition) for the
 last-leter-concatenation task. What it does is that an llm takes the question
-which is "think, machine, learning" and decompose it to 3 different 
+which is "think, machine, learning" and decompose it to 3 different
 sub problems that it will use to solve the main problem
 
 Figuring out the answer:
-The LLM will now take the different subproblems and solv them indevidually 
+The LLM will now take the different subproblems and solv them indevidually
 and use the answer of the previous problem to easier solve the problem after.
 (ignoring the first one since it's only 1 word)
 
->Q1: "think, machine"
->A1: The last letter of "think" is "k", the last letter of "machine" is "e", 
->    this gives us ke. So the output is "ke"
+> Q1: "think, machine"
+> A1: The last letter of "think" is "k", the last letter of "machine" is "e",
+> this gives us ke. So the output is "ke"
 >
->Q2: "think, machine, learning"
->A2: "think, machine" outputs "ke", The last letter of "learing" is "g",
->    concatenating "ke" and "g" leads to "keg". So the output is "keg"
+> Q2: "think, machine, learning"
+> A2: "think, machine" outputs "ke", The last letter of "learing" is "g",
+> concatenating "ke" and "g" leads to "keg". So the output is "keg"
 
 ### IR-CoT (Interleave Retrieval with Chain of Thougt)
+
 IR-CoT interleaves chain-of-thought generation and knowledge retrieval steps
-in order to guide the retrieval with CoT and vice-versa. This interleaving 
-allows retrievig more relevent information for later reasoning steps, compared 
+in order to guide the retrieval with CoT and vice-versa. This interleaving
+allows retrievig more relevent information for later reasoning steps, compared
 to standard retrieval using solely the question as the query
 
 [Example Prompt]
+
 ```python
 from langchain.prompts import ChatPromptTemplate
 
@@ -492,6 +514,7 @@ prompt_decomposition = ChatPromptTemplate.from_template(template)
 ```
 
 [Example usage with LangChain]
+
 ```python
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
@@ -501,7 +524,7 @@ llm = ChatOpenAI(temperature=0)
 
 # chain
 generate_queries_decomposition = (
-    prompt_decomposition   
+    prompt_decomposition
     | llm
     | StrOutputParser()
     | (lambda x: x.split("\n"))
@@ -511,7 +534,7 @@ generate_queries_decomposition = (
 question = "What is the main component of an LLM-powered autonomus agent system?"
 questions = generate_queries_decomposition.invoke({"question": question})
 
-print(question) 
+print(question)
 # output of print():
 # ['1. What is LLM technology and how does it work in autonomous agent systems?',
 #  '2. What are the specific components that make up an LLM-powered autonomous agent system?',
@@ -519,6 +542,7 @@ print(question)
 ```
 
 [Example: Prompt for using query decomposition]
+
 ```python
 template = """
 Here is the question you need to answer:
@@ -539,7 +563,8 @@ Use the above context and any background question + answer pairs to answer the q
 decomposition_template = ChatPromptTemplate.from_template(template)
 ```
 
-[Example: Usingg the decom_prompt]
+[Example: Using the decom_prompt]
+
 ```python
 from operator import itemgetter
 from langchain_core.parsers import StrOutputParser
@@ -549,10 +574,253 @@ def format_qa_paris(question, answer):
 
     formatted_string = ""
     formatted_string += f"Question: {question}\nAnswer: {answer}"
-    
+
     return formatted_string.strip()
+
+# llm
+llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
+
+q_a_pairs = ""
+for q in question:
+
+    rag_chain = (
+        {"context": itemgetter("question") | retriever,
+         "question": itemgetter("question"),
+         "q_a_pair": itemgetter("q_a_pair") }
+        | decomposition_prompt
+        | llm
+        | StrOutputParser()
+    )
+
+    answer = rag_chain.invoke({"question": q, "q_a_pairs": q_a_pairs})
+    q_a_pair = format_qa_pair(q,answer)
+    q_a_pairs = q_a_pairs + "\n---\n"+  q_a_pair
 ```
 
 [links to papers]
 [arxiv](https://arxiv.org/pdf/2205.10625.pdf)
 [ICLE-2023](https://arxiv.org/pdf/2205.10625)
+
+### step-back Prompting
+
+The idea here is that we take a question and then make an LLM abstract
+more then it allready is. An example here would be taking the question:
+"Jan Sindel's was born what year" and then the LLM abstract it to:
+"what is Jan Sindel's personal history".
+What this does is that it tries to make the query generate a more borader
+knowladge så so it has a bigger chanse to actually query what the original
+question is asking.
+
+> Step-back is really good when there is a lot of conceptual knwoladge
+> that u expect the users to know when the question are asked.
+> For example if u need to know the history of Jan Sindel to know
+> when he died because he was written of as dead in many different parts
+> of his story, then the LLM needs to know the history, not the time of death.
+
+[Example: Prompt and General]
+
+```python
+# Few Shot Examples
+from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptTemplate
+examples = [
+    {
+        "input": "Could the members of The Police perform lawful arrests?",
+        "output": "what can the members of The Police do?",
+    },
+    {
+        "input": "Jan Sindel’s was born in what country?",
+        "output": "what is Jan Sindel’s personal history?",
+    },
+]
+# We now transform these to example messages
+example_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("human", "{input}"),
+        ("ai", "{output}"),
+    ]
+)
+few_shot_prompt = FewShotChatMessagePromptTemplate(
+    example_prompt=example_prompt,
+    examples=examples,
+)
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """You are an expert at world knowledge. Your task is to step back and paraphrase a question
+            to a more generic step-back question, which is easier to answer. Here are a few examples:""",
+        ),
+        # Few shot examples
+        few_shot_prompt,
+        # New question
+        ("user", "{question}"),
+    ]
+)
+```
+
+[Example: Usage of Step-Back]
+
+```python
+generate_queries_step_back = prompt | ChatOpenAI(temperature=0) | StrOutputParser()
+question = "What is task decomposition for LLM agents?"
+
+# Response prompt
+response_prompt_template = """
+You are an expert of world knowledge. I am going to ask you a question.
+Your response should be comprehensive and not contradicted with the following context
+if they are relevant. Otherwise, ignore them if they are not relevant.
+
+# {normal_context}
+# {step_back_context}
+
+# Original Question: {question}
+# Answer:"""
+
+response_prompt = ChatPromptTemplate.from_template(response_prompt_template)
+
+chain = (
+    {
+        # Retrieve context using the normal question
+        "normal_context": RunnableLambda(lambda x: x["question"]) | retriever,
+        # Retrieve context using the step-back question
+        "step_back_context": generate_queries_step_back | retriever,
+        # Pass on the question
+        "question": lambda x: x["question"],
+    }
+    | response_prompt
+    | ChatOpenAI(temperature=0)
+    | StrOutputParser()
+)
+
+chain.invoke({"question": question})
+```
+
+### HyDe
+
+HyDe as a strategy lies in the assumption that a query question doesn't have enough context
+to accurately retrieve the correct documents. The idea is that because the query ultimately
+is shorter then the embedded document the chances for the query to get embedded next to the
+desired documents to retrieve decreases.
+
+The way HyDe tries to solve this is by taking the query and then add content to it to emulate
+the structure of a document so when it's embedded for retrieval it will be closer to the desired
+documents.
+
+[Example: Prompt]
+
+```python
+from langchain.prompts import ChatPromptTemplate
+
+# HyDE document genration
+template = """
+Please write a scientific paper passage to answer the question
+Question: {question}
+Passage:
+"""
+prompt_hyde = ChatPromptTemplate.from_template(template)
+
+from langchain_core.output_parsers import StrOutputParser
+from langchain_openai import ChatOpenAI
+
+generate_docs_for_retrieval = (
+    prompt_hyde | ChatOpenAI(temperature=0) | StrOutputParser()
+)
+
+# Run
+question = "What is task decomposition for LLM agents?"
+```
+
+[Example: Creation of Retriever]
+
+```python
+# Retrieve
+retrieval_chain = generate_docs_for_retrieval | retriever
+retireved_docs = retrieval_chain.invoke({"question":question})
+retireved_docs
+```
+
+[Exmaple: Querying and Answer]
+
+```python
+# RAG
+template = """Answer the following question based on this context:
+
+{context}
+
+Question: {question}
+"""
+
+prompt = ChatPromptTemplate.from_template(template)
+
+final_rag_chain = (
+    prompt
+    | llm
+    | StrOutputParser()
+)
+
+final_rag_chain.invoke({"context":retireved_docs,"question":question})
+
+```
+
+## Routing
+
+Routing as a concept is as simply as it sounds like just routing, depending of the questions context, where should
+we then route the query to generate the correct documents? Different types of documents require different type of storage
+for optimal retrieval and it's the routers job to figure out where we should query the documents from.
+There's also the idea of taking the question and then rout it to pre-embedded prompts which is another part
+of the routing strategies
+
+- Routes:
+
+  - Logical Routing
+
+    - giving and LLM the knowledge of what data sources
+      we can retrieve from and then letting it reason
+      about what data source to use depending on the question
+
+  - Semantic Routing
+
+    - We pre-embedd prompts we know will retrieve the correct answer
+      and when we later get a user question will do a similarity
+      search against the prompts and then retrieve based of the prompts
+      and not the question itself.
+
+### Logical Routing
+
+[Example:]
+
+```python
+from typing import Literal
+
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.pydantic_v1 import BaseModel, Field
+from langchain_openai import ChatOpenAI
+
+# Data model
+class RouteQuery(BaseModel):
+    """Route a user query to the most relevant datasource."""
+
+    datasource: Literal["python_docs", "js_docs", "golang_docs"] = Field(
+        ...,
+        description="Given a user question choose which datasource would be most relevant for answering their question",
+    )
+
+# LLM with function call
+llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0)
+structured_llm = llm.with_structured_output(RouteQuery)
+
+# Prompt
+system = """You are an expert at routing a user question to the appropriate data source.
+
+Based on the programming language the question is referring to, route it to the relevant data source."""
+
+prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", system),
+        ("human", "{question}"),
+    ]
+)
+
+# Define router
+router = prompt | structured_llm
+```
